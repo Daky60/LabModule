@@ -24,15 +24,14 @@ function Build-LabSwitch {
     Param(
         [Parameter(Mandatory)]
         [String]$Name,
-        [ValidateSet("internal", "external", "private", ErrorMessage="Try {1} instead")]
-        [String]$Type="internal",
-        [Parameter(Mandatory=$false)]
+        [ValidateSet("internal", "external", "private", ErrorMessage = "Try {1} instead")]
+        [String]$Type = "internal",
+        [Parameter(Mandatory = $false)]
         [String]$NetAdapter
     )
-    BEGIN
-    {
+    BEGIN {
         try {
-            if ( Get-VMSwitch | Where-Object {$_.Name -eq $Name} ) {
+            if ( Get-VMSwitch | Where-Object { $_.Name -eq $Name } ) {
                 throw "Switch $Name already exists"
             }
         }
@@ -42,19 +41,18 @@ function Build-LabSwitch {
             return;
         }
     }
-    PROCESS 
-    {
+    PROCESS {
         try {
             switch ($Type) {
-             "internal" {
-                New-VMSwitch $Name -SwitchType "internal" -EA Stop | Out-Null
-             }
-             "private" {
-                New-VMSwitch $Name -SwitchType "private" -EA Stop | Out-Null
-             }
-             "external" {
-                New-VMSwitch $Name -NetAdapterName $NetAdapter -EA Stop | Out-Null
-             }
+                "internal" {
+                    New-VMSwitch $Name -SwitchType "internal" -EA Stop | Out-Null
+                }
+                "private" {
+                    New-VMSwitch $Name -SwitchType "private" -EA Stop | Out-Null
+                }
+                "external" {
+                    New-VMSwitch $Name -NetAdapterName $NetAdapter -EA Stop | Out-Null
+                }
             }
         }
         catch {
@@ -63,8 +61,7 @@ function Build-LabSwitch {
             return;
         }
     }
-    END
-    {
+    END {
         Write-Verbose "Virtual Switch $Name created"
     }
 }
@@ -158,38 +155,37 @@ function Build-LabVM {
     Param(
         [Parameter(Mandatory)]
         [String]$Name,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [String]$TemplateVHD,
-        [Parameter(Mandatory=$false)]
-        [Int64]$Memory=1GB,
-        [Parameter(Mandatory=$false)]
-        [ValidateRange(1,2)]
-        [int16]$Generation=1,
-        [Parameter(Mandatory=$false)]
-        [int16]$ProcessorCount=1,
-        [Parameter(Mandatory=$false)]
-        [String]$Path=".\Labs\",
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
+        [Int64]$Memory = 1GB,
+        [Parameter(Mandatory = $false)]
+        [ValidateRange(1, 2)]
+        [int16]$Generation = 1,
+        [Parameter(Mandatory = $false)]
+        [int16]$ProcessorCount = 1,
+        [Parameter(Mandatory = $false)]
+        [String]$Path = ".\Labs\",
+        [Parameter(Mandatory = $false)]
         [String]$Switch,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [String]$IP,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [String]$Prefix,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [String]$DefaultGateway,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [String]$DNS,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [String]$Username,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
         [SecureString]$Password,
-        [Parameter(Mandatory=$false)]
-        [bool]$DomainJoined=$false,
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
+        [bool]$DomainJoined = $false,
+        [Parameter(Mandatory = $false)]
         [String]$DomainName
     )
-    BEGIN
-    {
+    BEGIN {
         $Credentials = New-Object System.Management.Automation.PSCredential ($Username, $Password)
         ## Fix so it stops if one fails
         try {
@@ -197,7 +193,7 @@ function Build-LabVM {
             $ValidateTemplateVHD = Get-VHD -Path $TemplateVHD -EA stop
             $VHDDestination = "$Path\$Name\$Name.$($ValidateTemplateVHD.Vhdformat)"
 
-            if (Get-VM | Where-Object {$_.Name -eq $Name}) {
+            if (Get-VM | Where-Object { $_.Name -eq $Name }) {
                 throw "Virtual Machine $Name already exists."
             }
             if ( !(Test-Path $Path) ) {
@@ -225,20 +221,19 @@ function Build-LabVM {
         }
         
     }
-    PROCESS
-    {
+    PROCESS {
         ## Build the VM
         try {
             $VMParameters = @{
-                Name = $Name
+                Name               = $Name
                 MemoryStartupBytes = $Memory
-                VHDPath = $VHDDestination
-                Path = $Path
-                Generation = $Generation
+                VHDPath            = $VHDDestination
+                Path               = $Path
+                Generation         = $Generation
             }
 
             if ( $PSBoundParameters.ContainsKey('Switch') ) {
-                if ( Get-VMSwitch | Where-Object {$_.Name -eq $Switch} ) {
+                if ( Get-VMSwitch | Where-Object { $_.Name -eq $Switch } ) {
                     $VMParameters.Add('Switch', $Switch)
                 }
             }
@@ -246,8 +241,8 @@ function Build-LabVM {
             $NewVM = New-VM @VMParameters -EA stop
             if ( ($NewVM.ProcessorCount -ne $ProcessorCount) ) {
                 $NewVM | Set-VM -ProcessorCount $ProcessorCount -EA stop
-              }
             }
+        }
         catch {
             throw $_.Exception.Message
             break
@@ -287,13 +282,12 @@ function Build-LabVM {
                 }
             }
             Invoke-Command -VMName $Name -ScriptBlock $SetupVM -Credential $Credentials
-            }
+        }
         catch {
             throw $_.Exception.Message
         }
     }
-    END
-    {
+    END {
         Write-Verbose "Virtual Machine $Name created"
     }
 }
@@ -337,33 +331,33 @@ https://docs.microsoft.com/en-us/powershell/module/addsdeployment/install-addsfo
 function Build-LabForest {
     [CmdletBinding()]
     Param(
-    [Parameter(Mandatory=$true)]
-    [String]$Name,
-    [Parameter(Mandatory=$true)]
-    [String]$DomainName,
-    [Parameter(Mandatory=$true)]
-    [String]$Username,
-    [Parameter(Mandatory=$true)]
-    [SecureString]$Password,
-    [Parameter(Mandatory=$false)]
-    [String]$DomainMode="WinThreshold",
-    [Parameter(Mandatory=$false)]
-    [String]$ForestMode="WinThreshold"
+        [Parameter(Mandatory = $true)]
+        [String]$Name,
+        [Parameter(Mandatory = $true)]
+        [String]$DomainName,
+        [Parameter(Mandatory = $true)]
+        [String]$Username,
+        [Parameter(Mandatory = $true)]
+        [SecureString]$Password,
+        [Parameter(Mandatory = $false)]
+        [String]$DomainMode = "WinThreshold",
+        [Parameter(Mandatory = $false)]
+        [String]$ForestMode = "WinThreshold"
     )
     $Credentials = New-Object System.Management.Automation.PSCredential ($Username, $Password)
     try {
-        if (Get-VM | Where-Object {$_.Name -eq $Name}) {
+        if (Get-VM | Where-Object { $_.Name -eq $Name }) {
             $InstallForest = {
                 Install-WindowsFeature AD-Domain-Services -IncludeManagementTools
                 Import-Module ADDSDeployment
                 Install-ADDSForest `
-                -CreateDnsDelegation:$false `
-                -DomainMode $Using:DomainMode `
-                -DomainName $Using:DomainName `
-                -ForestMode $Using:ForestMode `
-                -InstallDns:$true `
-                -SafeModeAdministratorPassword $Using:Credentials.Password `
-                -Force
+                    -CreateDnsDelegation:$false `
+                    -DomainMode $Using:DomainMode `
+                    -DomainName $Using:DomainName `
+                    -ForestMode $Using:ForestMode `
+                    -InstallDns:$true `
+                    -SafeModeAdministratorPassword $Using:Credentials.Password `
+                    -Force
                 ## Do lots of stuff
             }
             Invoke-Command -VMName $Name -ScriptBlock $InstallForest -Credential $Credentials
@@ -394,7 +388,7 @@ Deletes the VHD if in the same folder as the VM
 function Remove-LabVM {
     [CmdletBinding()]
     Param(
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory = $true)]
         [String]$Name
     )
     try {
