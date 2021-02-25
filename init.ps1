@@ -2,7 +2,7 @@ $config = ".\secretconf.psd1"
 $module = ".\LabModule.psm1"
 
 
-if (Get-Module | Where-Object{$_.Name -eq "LabModule"}) {
+if (Get-Module | Where-Object { $_.Name -eq "LabModule" }) {
     Remove-Module LabModule
 }
 Import-Module $module
@@ -49,6 +49,6 @@ catch {
 }
 
 
-if (Get-Module | Where-Object{$_.Name -eq "LabModule"}) {
+if (Get-Module | Where-Object { $_.Name -eq "LabModule" }) {
     Remove-Module LabModule
 }
