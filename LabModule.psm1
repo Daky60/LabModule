@@ -195,13 +195,16 @@ function Build-LabVM {
         try {
             #Uses appropiate file ending
             $ValidateTemplateVHD = Get-VHD -Path $TemplateVHD -EA stop
-            $VHDDestination = "$Path\$Name.$($ValidateTemplateVHD.Vhdformat)"
+            $VHDDestination = "$Path\$Name\$Name.$($ValidateTemplateVHD.Vhdformat)"
 
             if (Get-VM | Where-Object {$_.Name -eq $Name}) {
                 throw "Virtual Machine $Name already exists."
             }
             if ( !(Test-Path $Path) ) {
                 New-Item -ItemType Directory -Path $Path -EA stop | Out-Null
+            }
+            if (Test-Path $Path) {
+                New-Item -ItemType Directory -Path "$Path/$Name" -EA stop | Out-Null
             }
             if ( ($TemplateVHD) -and (Test-Path $TemplateVHD -EA SilentlyContinue) ) {
                 if ( !(Test-Path $VHDDestination -EA stop) ) {
@@ -399,6 +402,7 @@ function Remove-LabVM {
         ## Turns off VM and removes all its data
         if ($VM) {
             $VM | Stop-VM -TurnOff
+            do { Start-Sleep 5 } while ( (Get-VM $Name).state -eq "Running" )
             Get-ChildItem -Path $VM.Path -Recurse | Remove-Item -Force -Recurse
             Remove-Item $VM.Path -Force 
         }
