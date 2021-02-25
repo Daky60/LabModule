@@ -331,7 +331,7 @@ Build-Forest -Name "My-VM" -DomainName "contoso.local" -Username "Administrator"
 https://docs.microsoft.com/en-us/powershell/module/addsdeployment/install-addsforest?view=win10-ps
 
 #>
-function Build-Forest {
+function Build-LabForest {
     [CmdletBinding()]
     Param(
     [Parameter(Mandatory=$true)]
