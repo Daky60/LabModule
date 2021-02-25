@@ -1,4 +1,4 @@
-$config = ".\conf.psd1"
+$config = ".\secretconf.psd1"
 $module = ".\LabModule.psm1"
 
 
@@ -19,6 +19,9 @@ try {
         throw "Config file not found. Edit init.ps1"
     }
     foreach ($i in $config.ActionList) {
+        if ($i.Password) {
+            $i.Password = $i.Password | ConvertTo-SecureString -AsPlainText -Force
+        }
         if ($i.ActionType) {
             switch ($i.ActionType) {
                 "Switch" {
