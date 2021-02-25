@@ -370,3 +370,40 @@ function Build-LabForest {
         throw $_.Exception.Message
     }
 }
+
+<#
+.SYNOPSIS
+Deletes Lab VM
+
+.DESCRIPTION
+This function, unlike Remove-VM is better integrated with the module and also deletes the VHD associated with the VM
+
+.PARAMETER Name
+Name of the VM
+
+.EXAMPLE
+Remove-LabVM -Name "My-VM"
+
+.NOTES
+Deletes the VHD if in the same folder as the VM
+
+#>
+function Remove-LabVM {
+    [CmdletBinding()]
+    Param(
+        [Parameter(Mandatory=$true)]
+        [String]$Name
+    )
+    try {
+        $VM = Get-VM | Where-Object { $_.Name -eq $Name }
+        ## Turns off VM and removes all its data
+        if ($VM) {
+            $VM | Stop-VM -TurnOff
+            Get-ChildItem -Path $VM.Path -Recurse | Remove-Item -Force -Recurse
+            Remove-Item $VM.Path -Force 
+        }
+    }
+    catch {
+        Write-Error $_.Exception.Message
+    }
+}
