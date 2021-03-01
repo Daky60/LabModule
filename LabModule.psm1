@@ -61,9 +61,6 @@ function Build-LabSwitch {
             return;
         }
     }
-    END {
-        Write-Verbose "Virtual Switch $Name created"
-    }
 }
 
 <#
@@ -284,11 +281,8 @@ function Build-LabVM {
             Invoke-Command -VMName $Name -ScriptBlock $SetupVM -Credential $Credentials
         }
         catch {
-            throw $_.Exception.Message
+            throw $_.Exception
         }
-    }
-    END {
-        Write-Verbose "Virtual Machine $Name created"
     }
 }
 
@@ -345,6 +339,7 @@ function Build-LabForest {
         [String]$ForestMode = "WinThreshold"
     )
     $Credentials = New-Object System.Management.Automation.PSCredential ($Username, $Password)
+    $DomainCredentials = New-Object System.Management.Automation.PSCredential (("$DomainName\$Username"), $Password)
     try {
         if (Get-VM | Where-Object { $_.Name -eq $Name }) {
             $InstallForest = {
@@ -357,15 +352,40 @@ function Build-LabForest {
                     -ForestMode $Using:ForestMode `
                     -InstallDns:$true `
                     -SafeModeAdministratorPassword $Using:Credentials.Password `
+                    -NoRebootOnCompletion `
                     -Force
-                ## Do lots of stuff
             }
             Invoke-Command -VMName $Name -ScriptBlock $InstallForest -Credential $Credentials
+
+            # Wait till DC is booted
+
+            Restart-VM $Name -Force -Wait
+            do { Start-Sleep 5 } while ( (Get-VM $Name).state -ne "Running" ) 
+
+            # Wait till AD is reachable
+
+            $StartTime = Get-Date
+            $WaitAD = {
+                do {
+                    Start-Sleep 10
+                    Get-ADComputer $env:computername -EA SilentlyContinue | Out-Null
+                } until ($?)
+            }
+            do {
+                $TimeElapsed = $(Get-Date) - $StartTime
+                if ($TimeElapsed.TotalMinutes -gt 20) {
+                    throw "Took too long to restart DC"
+                } 
+                Start-Sleep 10
+                Invoke-Command -VMName $Name -ScriptBlock $WaitAD -Credential $DomainCredentials -EA SilentlyContinue | Out-Null
+            }
+            until ($?)
         }
     }
     catch {
         throw $_.Exception.Message
     }
+
 }
 
 <#
@@ -394,11 +414,50 @@ function Remove-LabVM {
     try {
         $VM = Get-VM | Where-Object { $_.Name -eq $Name }
         ## Turns off VM and removes all its data
-        if ($VM) {
+        if (($VM).state -ne "Off") {
             $VM | Stop-VM -TurnOff
-            do { Start-Sleep 5 } while ( (Get-VM $Name).state -eq "Running" )
-            Get-ChildItem -Path $VM.Path -Recurse | Remove-Item -Force -Recurse
-            Remove-Item $VM.Path -Force 
+            do { Start-Sleep 5 } while ( ($VM).state -eq "Running" )
+        }
+        $VM | Remove-VM -Force
+        Get-ChildItem -Path $VM.Path -Recurse | Remove-Item -Force -Recurse
+        Remove-Item $VM.Path -Force 
+    }
+    catch {
+        Write-Error $_.Exception.Message
+    }
+}
+
+
+<#
+.SYNOPSIS
+Deletes entire lab environments
+
+.DESCRIPTION
+This function removes all VMs inside a folder
+
+.PARAMETER Folder
+Name of the folder which holds all VMs
+
+.EXAMPLE
+Remove-LabVM -Folder "Lab"
+
+.NOTES
+Deletes the VHDs if in the same folder as the VM
+
+#>
+function Remove-LabEnv {
+    [CmdletBinding()]
+    Param(
+        [Parameter(Mandatory = $true)]
+        [String]$Folder
+    )
+    try {
+        if (Test-Path $Folder) {
+            $Folder = Get-ChildItem $Folder
+            foreach ($VM in $Folder) {
+                Remove-LabVM $VM
+            }
+            Remove-Item $Folder -Force
         }
     }
     catch {

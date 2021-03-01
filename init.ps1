@@ -19,6 +19,7 @@ try {
         throw "Config file not found. Edit init.ps1"
     }
     foreach ($i in $config.ActionList) {
+        $StartTime = Get-Date
         if ($i.Password) {
             $i.Password = $i.Password | ConvertTo-SecureString -AsPlainText -Force
         }
@@ -27,14 +28,26 @@ try {
                 "Switch" {
                     $i.Remove("ActionType")
                     Build-LabSwitch @i
+                    if ($?) {
+                        $TimeElapsed = $(Get-Date) - $StartTime
+                        Write-Host("Switch $($i.Name) created in $($TimeElapsed.TotalMinutes) minutes")
+                    }
                 }
                 "VM" {
                     $i.Remove("ActionType")
                     Build-LabVM @i
+                    if ($?) {
+                        $TimeElapsed = $(Get-Date) - $StartTime
+                        Write-Host("VM $($i.Name) created in $($TimeElapsed.TotalMinutes) minutes")
+                    }
                 }
                 "Forest" {
                     $i.Remove("ActionType")
                     Build-LabForest @i
+                    if ($?) {
+                        $TimeElapsed = $(Get-Date) - $StartTime
+                        Write-Host("Forest $($i.DomainName) created in $($TimeElapsed.TotalMinutes) minutes")
+                    }
                 }
                 default { "ActionType must be Switch, VM or Forest" }
             }
@@ -45,10 +58,14 @@ try {
     }
 }
 catch {
-    throw $_.Exception.Message
+    throw
 }
 
 
 if (Get-Module | Where-Object { $_.Name -eq "LabModule" }) {
     Remove-Module LabModule
 }
+
+
+$TimeElapsed = Get-Date - $StartTime
+Write-Host("Total time elapsed: $($TimeElapsed.TotalMinutes) minutes")
