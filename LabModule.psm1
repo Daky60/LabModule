@@ -63,6 +63,18 @@ function Build-LabSwitch {
     }
 }
 
+
+function Wait-Services {
+    Param(
+        [String]$VM
+    )
+    do { Start-Sleep 5 }
+    until 
+        ( (Get-VMIntegrationService $VM | Where-Object { $_.name -eq "Heartbeat" }).PrimaryOperationalStatus -eq "OK" )
+
+}
+
+
 <#
 .SYNOPSIS
 Creates a virtual machine in Hyper-V
@@ -249,21 +261,17 @@ function Build-LabVM {
             ## Start the VM
             Start-VM $Name
             ## Wait for VM to start up
-            do { Start-Sleep 5 } while ( (Get-VM $Name).state -ne "Running" )
-
-            # Rename computer
-            Invoke-Command `
-                -VMName $Name `
-                -ScriptBlock { param ($NewName) Rename-Computer -ComputerName $env:computername -NewName $NewName -Force } `
-                -Credential $Credentials `
-                -ArgumentList $Name `
-                -EA stop
+            Start-Sleep 120
+            # Rename VM
+            $RenameVM = 
+            {
+                Rename-Computer -ComputerName $env:computername -NewName $Using:Name -Force -WarningAction SilentlyContinue
+            }
+            Invoke-Command -VMName $Name -ScriptBlock $RenameVM -Credential $Credentials | Out-Null
+            
             Restart-VM $Name -Force -Wait
             # Wait
-        
-
             do { Start-Sleep 5 } while ( (Get-VM $Name).state -ne "Running" )
-
 
             ## Final configurations
             $SetupVM = 
@@ -274,11 +282,16 @@ function Build-LabVM {
                     New-NetIPAddress -InterfaceIndex $IFIndex -IPAddress $Using:IP -PrefixLength $Using:Prefix -DefaultGateway $Using:DefaultGateway -EA Stop
                     Set-DNSClientServerAddress –interfaceIndex $IFIndex –ServerAddresses $Using:DNS -EA stop
                 }
+                ## Wait until domain is reachable
                 if ( $Using:DomainJoined ) {
+                    do {
+                        Start-Sleep(10)
+                        Test-Connection $Using:DomainName -Count 1
+                    } until ($?)
                     Add-Computer -DomainName $Using:DomainName -ComputerName $env:computername -Credential $Using:Credentials -Restart –Force -EA stop
                 }
             }
-            Invoke-Command -VMName $Name -ScriptBlock $SetupVM -Credential $Credentials
+            Invoke-Command -VMName $Name -ScriptBlock $SetupVM -Credential $Credentials | Out-Null
         }
         catch {
             throw $_.Exception
@@ -339,10 +352,11 @@ function Build-LabForest {
         [String]$ForestMode = "WinThreshold"
     )
     $Credentials = New-Object System.Management.Automation.PSCredential ($Username, $Password)
-    $DomainCredentials = New-Object System.Management.Automation.PSCredential (("$DomainName\$Username"), $Password)
+    $localCredentials = New-Object System.Management.Automation.PSCredential ((".\$Username"), $Password)
     try {
         if (Get-VM | Where-Object { $_.Name -eq $Name }) {
             $InstallForest = {
+                #Enable-PSRemoting -Force
                 Install-WindowsFeature AD-Domain-Services -IncludeManagementTools
                 Import-Module ADDSDeployment
                 Install-ADDSForest `
@@ -352,23 +366,20 @@ function Build-LabForest {
                     -ForestMode $Using:ForestMode `
                     -InstallDns:$true `
                     -SafeModeAdministratorPassword $Using:Credentials.Password `
-                    -NoRebootOnCompletion `
-                    -Force
+                    -Force `
+                    -WarningAction SilentlyContinue
             }
-            Invoke-Command -VMName $Name -ScriptBlock $InstallForest -Credential $Credentials
+            Invoke-Command -VMName $Name -ScriptBlock $InstallForest -Credential $Credentials | Out-Null
 
             # Wait till DC is booted
-
-            Restart-VM $Name -Force -Wait
             do { Start-Sleep 5 } while ( (Get-VM $Name).state -ne "Running" ) 
 
-            # Wait till AD is reachable
-
+            # Wait till Computer is reachable
             $StartTime = Get-Date
             $WaitAD = {
                 do {
                     Start-Sleep 10
-                    Get-ADComputer $env:computername -EA SilentlyContinue | Out-Null
+                    Get-ADComputer $env:computername | Out-Null
                 } until ($?)
             }
             do {
@@ -377,7 +388,7 @@ function Build-LabForest {
                     throw "Took too long to restart DC"
                 } 
                 Start-Sleep 10
-                Invoke-Command -VMName $Name -ScriptBlock $WaitAD -Credential $DomainCredentials -EA SilentlyContinue | Out-Null
+                Invoke-Command -VMName $Name -ScriptBlock $WaitAD -Credential $localCredentials -EA SilentlyContinue | Out-Null
             }
             until ($?)
         }

@@ -1,23 +1,28 @@
 $config = ".\secretconf.psd1"
-$module = ".\LabModule.psm1"
 
-
-if (Get-Module | Where-Object { $_.Name -eq "LabModule" }) {
-    Remove-Module LabModule
-}
-Import-Module $module
-
-
+$Time = Get-Date
 try {
-    if (!(Test-Path $module)) {
-        throw "Module file not found. Edit init.ps1"
-    }
     if (Test-Path $config) {
         $config = Import-PowerShellDataFile $config
     }
     else {
         throw "Config file not found. Edit init.ps1"
     }
+    if (!(Test-Path $config.Configuration.ModulePath)) {
+        throw "Module file not found. Edit config.ps1"
+    }
+    if (Get-Module | Where-Object { $_.Name -eq "LabModule" }) {
+        Remove-Module LabModule
+    }
+    Import-Module $config.Configuration.ModulePath
+}
+catch {
+    throw 
+}
+
+
+
+try {
     foreach ($i in $config.ActionList) {
         $StartTime = Get-Date
         if ($i.Password) {
@@ -30,7 +35,7 @@ try {
                     Build-LabSwitch @i
                     if ($?) {
                         $TimeElapsed = $(Get-Date) - $StartTime
-                        Write-Host("Switch $($i.Name) created in $($TimeElapsed.TotalMinutes) minutes")
+                        Write-Host("Switch $($i.Name) created in $([math]::Round($TimeElapsed.TotalMinutes)) minutes")
                     }
                 }
                 "VM" {
@@ -38,7 +43,7 @@ try {
                     Build-LabVM @i
                     if ($?) {
                         $TimeElapsed = $(Get-Date) - $StartTime
-                        Write-Host("VM $($i.Name) created in $($TimeElapsed.TotalMinutes) minutes")
+                        Write-Host("VM $($i.Name) created in $([math]::Round($TimeElapsed.TotalMinutes)) minutes")
                     }
                 }
                 "Forest" {
@@ -46,7 +51,7 @@ try {
                     Build-LabForest @i
                     if ($?) {
                         $TimeElapsed = $(Get-Date) - $StartTime
-                        Write-Host("Forest $($i.DomainName) created in $($TimeElapsed.TotalMinutes) minutes")
+                        Write-Host("Forest $($i.DomainName) created in $([math]::Round($TimeElapsed.TotalMinutes)) minutes")
                     }
                 }
                 default { "ActionType must be Switch, VM or Forest" }
@@ -67,5 +72,5 @@ if (Get-Module | Where-Object { $_.Name -eq "LabModule" }) {
 }
 
 
-$TimeElapsed = Get-Date - $StartTime
-Write-Host("Total time elapsed: $($TimeElapsed.TotalMinutes) minutes")
+$TimeElapsed = $(Get-Date) - $Time
+Write-Host("Total time elapsed: $([math]::Round($TimeElapsed.TotalMinutes)) minutes")
