@@ -64,14 +64,29 @@ function Build-LabSwitch {
 }
 
 
-function Wait-Services {
+function Wait-VM {
+    [CmdletBinding()]
     Param(
         [String]$VM
     )
-    do { Start-Sleep 5 }
-    until 
-        ( (Get-VMIntegrationService $VM | Where-Object { $_.name -eq "Heartbeat" }).PrimaryOperationalStatus -eq "OK" )
-
+    try {
+        if (Get-VM | Where-Object {$_.Name -eq $VM}) {
+            $startTime = Get-Date
+            while ( Get-VMIntegrationService $VM | Where-Object { $_.PrimaryOperationalStatus -ne "OK"} ) {
+                Start-Sleep 10
+                $timeElapsed = $(Get-Date) - $startTime
+                if ($timeElapsed.TotalMinutes -gt 10) {
+                    throw "More than 10 minutes elapsed waiting for $VM to start"
+                }
+            }
+        }
+        else { 
+            throw "$VM not found"
+        }
+    }
+    catch {
+        throw $_.Exception.Message
+    }
 }
 
 
@@ -261,7 +276,7 @@ function Build-LabVM {
             ## Start the VM
             Start-VM $Name
             ## Wait for VM to start up
-            Start-Sleep 120
+            Wait-VM $Name
             # Rename VM
             $RenameVM = 
             {
@@ -271,7 +286,7 @@ function Build-LabVM {
             
             Restart-VM $Name -Force -Wait
             # Wait
-            do { Start-Sleep 5 } while ( (Get-VM $Name).state -ne "Running" )
+            Wait-VM $Name
 
             ## Final configurations
             $SetupVM = 
