@@ -4,16 +4,23 @@ Creates virtual switch in Hyper-V
 
 .PARAMETER Name
 Name of the switch
+Required: True
 
 .PARAMETER Type
 Type of the switch, choose between internal, external or private
+Required: True
 Default value: internal
 
 .PARAMETER NetAdapter
-NetAdapter which the switch should be bound to.
+NetAdapter which the switch should be bound to. To be used with External switch
+Required: False
+Default: None
+
 
 .EXAMPLE
 Build-LabSwitch -Name "Lab-switch" -Type "external" -NetAdapter "ethernet"
+
+Build-LabSwitch "Lab-switch"
 
 .NOTES
 https://docs.microsoft.com/en-us/powershell/module/hyper-v/new-vmswitch?view=win10-ps
@@ -112,73 +119,96 @@ Post-installation configuration such as network settings and joining the machine
 
 .PARAMETER Name
 Name of the VM
+Required: True
 
 .PARAMETER TemplateVHD
 Path of the VHD which to copy for use for the new VM
+Required: False
 
 .PARAMETER Memory
 Memory in GB of the VM
+Required: False
 Default: 1GB
 
 .PARAMETER Generation
 Generation of the VM, 1 or 2
+Required: False
 Default: 1
 
 .PARAMETER ProcessorCount
 Processor count of the VM
+Required: False
 Default: 1
 
 .PARAMETER Path
 Path of the VM files
+Required: False
 Default: ./labs/
 
 .PARAMETER Switch
 Switch to be attached to the VM
+Required: False
 Default: None
+
+.PARAMETER Username
+Username for local administrator account
+Required: False
+Default: None
+Required for any post-installation configuration such as network settings
+
+.PARAMETER Password
+Password for local administrator account
+Required: False
+Default: None
+Required for any post-installation configuration such as network settings
 
 .PARAMETER IP
 IP to be assigned to the VM
+Required: False
 Default: None
 Requires IP, DefaultGateway, Prefix params
 
 .PARAMETER Prefix
 Prefix length to be assigned to the VM
+Required: False
 Default: 24
 Requires IP, DefaultGateway, DNS params
 
 .PARAMETER DefaultGateway
 Default Gateway to be assigned to the VM
+Required: False
 Default: None
 Requires IP, Prefix, DNS params
 
-
 .PARAMETER DNS
 DNS to be assigned to the VM
+Required: False
 Default: None
 Requires IP, DefaultGateway, Prefix params
 
-.PARAMETER Username
-Username for local administrator account
-Default: None
-Required for post-installation configuration such as network settings
-
-.PARAMETER Password
-Password for local administrator account
-Default: None
-Required for post-installation configuration such as network settings
-
 .PARAMETER DomainJoined
 Whether or not to join the VM to a domain
+Required: False
 Default: $false
 Requires DomainName param
 
 .PARAMETER DomainName
 Domain to join the computer to
+Required: False
 Default: None
 Requires DomainJoined
 
 
 .EXAMPLE
+
+Build-LabVM "My-VM"
+
+Build-LabVM -TemplateVHD "C:\template.vhd"
+
+Build-LabVM -TemplateVHD "C:\template.vhd" -Switch "My-Switch" -IP "192.168.0.2" -Prefix "24" -DefaultGateway "192.168.0.1" -DNS "127.0.0.1"
+
+Build-LabVM -TemplateVHD "C:\template.vhd" -Switch "My-Switch" -IP "192.168.0.2" -Prefix "24" -DefaultGateway "192.168.0.1" -DNS "127.0.0.1" -Username "Administrator" -Password ("Pa55w0rd" | ConvertTo-SecureString -AsPlainText -Force)
+
 Build-LabVM -Name "My-VM" -TemplateVHD "C:\template.vhd" -Memory 2GB -Generation 1 -ProcessorCount 2 -Switch "My-Switch" -IP "192.168.0.2" -Prefix "24" -DefaultGateway "192.168.0.1" -DNS "127.0.0.1" -Username "Administrator" -Password ("Pa55w0rd" | ConvertTo-SecureString -AsPlainText -Force) -DomainJoined $true -DomainName "contoso.local"
 
 .NOTES
@@ -204,6 +234,10 @@ function Build-LabVM {
         [Parameter(Mandatory = $false)]
         [String]$Switch,
         [Parameter(Mandatory = $false)]
+        [String]$Username,
+        [Parameter(Mandatory = $false)]
+        [SecureString]$Password,
+        [Parameter(Mandatory = $false)]
         [String]$IP,
         [Parameter(Mandatory = $false)]
         [String]$Prefix,
@@ -211,10 +245,6 @@ function Build-LabVM {
         [String]$DefaultGateway,
         [Parameter(Mandatory = $false)]
         [String]$DNS,
-        [Parameter(Mandatory = $false)]
-        [String]$Username,
-        [Parameter(Mandatory = $false)]
-        [SecureString]$Password,
         [Parameter(Mandatory = $false)]
         [bool]$DomainJoined = $false,
         [Parameter(Mandatory = $false)]
@@ -334,26 +364,32 @@ Installs a new AD Forest
 
 .PARAMETER Name
 Name of the VM to promote to DC
+Required: True
 Default: None
 
 .PARAMETER DomainName
 Name of the domain
+Required: True
 Default: None
 
 .PARAMETER Username
 Username of local administrator
+Required: True
 Default: None
 
 .PARAMETER Password
 Password of local administrator AND DSRM Password
+Required: True
 Default: None
 
 .PARAMETER DomainMode
 Domain functional level
+Required: False
 Default: "WinThreshold" (WIN2016)
 
 .PARAMETER ForestMode
 Forest functional level
+Required: False
 Default: "WinThreshold" (WIN2016)
 
 
@@ -362,6 +398,7 @@ Build-Forest -Name "My-VM" -DomainName "contoso.local" -Username "Administrator"
 
 .NOTES
 https://docs.microsoft.com/en-us/powershell/module/addsdeployment/install-addsforest?view=win10-ps
+The password of the Admin account will also be used for the DSRM password
 
 #>
 function Build-LabForest {
@@ -434,7 +471,7 @@ function Build-LabForest {
 
 <#
 .SYNOPSIS
-Deletes Lab VM
+Deletes a Lab VM
 
 .DESCRIPTION
 This function, unlike Remove-VM is better integrated with the module and also deletes the VHD associated with the VM
