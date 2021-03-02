@@ -64,6 +64,17 @@ function Build-LabSwitch {
 }
 
 
+<#
+.SYNOPSIS
+Used to pause actions till the VM is booted up completely
+
+.PARAMETER VM
+Name of the VM which to wait for
+
+.EXAMPLE
+Wait-VM "My-VM"
+
+#>
 function Wait-VM {
     [CmdletBinding()]
     Param(
@@ -80,7 +91,7 @@ function Wait-VM {
                 }
             }
         }
-        else { 
+        else {
             throw "$VM not found"
         }
     }
@@ -95,7 +106,7 @@ function Wait-VM {
 Creates a virtual machine in Hyper-V
 
 .DESCRIPTION
-Creates a virtual machine in Hyper-V with great flexability and little time. 
+Creates a virtual machine in Hyper-V with great flexability and little time.
 Post-installation configuration such as network settings and joining the machine to a domain is a possibility.
 
 
@@ -233,7 +244,6 @@ function Build-LabVM {
                 else {
                     throw "VHD already exists in destination path"
                 }
-                
             }
             else {
                 throw "Missing TemplateVHD path $TemplateVHD"
@@ -243,7 +253,6 @@ function Build-LabVM {
             throw $_.Exception.Message
             break
         }
-        
     }
     PROCESS {
         ## Build the VM
@@ -278,18 +287,18 @@ function Build-LabVM {
             ## Wait for VM to start up
             Wait-VM $Name
             # Rename VM
-            $RenameVM = 
+            $RenameVM =
             {
                 Rename-Computer -ComputerName $env:computername -NewName $Using:Name -Force -WarningAction SilentlyContinue
             }
             Invoke-Command -VMName $Name -ScriptBlock $RenameVM -Credential $Credentials | Out-Null
-            
+
             Restart-VM $Name -Force -Wait
             # Wait
             Wait-VM $Name
 
             ## Final configurations
-            $SetupVM = 
+            $SetupVM =
             {
                 ## Network configuration
                 if ( ($Using:IP) -and ($Using:Prefix) -and ($Using:DefaultGateway) -and ($Using:DNS) ) {
@@ -313,6 +322,7 @@ function Build-LabVM {
         }
     }
 }
+
 
 <#
 .SYNOPSIS
@@ -340,7 +350,7 @@ Default: "WinThreshold" (WIN2016)
 
 .PARAMETER ForestMode
 Forest functional level
-Default: "WinThreshold" (WIN2016) 
+Default: "WinThreshold" (WIN2016)
 
 
 .EXAMPLE
@@ -374,22 +384,24 @@ function Build-LabForest {
                 #Enable-PSRemoting -Force
                 Install-WindowsFeature AD-Domain-Services -IncludeManagementTools
                 Import-Module ADDSDeployment
-                Install-ADDSForest `
-                    -CreateDnsDelegation:$false `
-                    -DomainMode $Using:DomainMode `
-                    -DomainName $Using:DomainName `
-                    -ForestMode $Using:ForestMode `
-                    -InstallDns:$true `
-                    -SafeModeAdministratorPassword $Using:Credentials.Password `
-                    -Force `
-                    -WarningAction SilentlyContinue
-            }
+
+                ForestParameters = @{
+                    CreateDnsDelegation = $false
+                    DomainMode = $Using:DomainMode
+                    DomainName = $Using:DomainName
+                    InstallDns = $true
+                    SafeModeAdministratorPassword = $Using:Credentials.Password
+                    Force = $true
+                    WarningAction = SilentlyContinue
+                }
+
+            Install-ADDSForest @InstallFores}
             Invoke-Command -VMName $Name -ScriptBlock $InstallForest -Credential $Credentials | Out-Null
 
             # Wait till DC is booted
-            do { Start-Sleep 5 } while ( (Get-VM $Name).state -ne "Running" ) 
+            do { Start-Sleep 5 } while ( (Get-VM $Name).state -ne "Running" )
 
-            # Wait till Computer is reachable
+            # Wait for AD to be reachable before proceeding
             $StartTime = Get-Date
             $WaitAD = {
                 do {
@@ -401,7 +413,7 @@ function Build-LabForest {
                 $TimeElapsed = $(Get-Date) - $StartTime
                 if ($TimeElapsed.TotalMinutes -gt 20) {
                     throw "Took too long to restart DC"
-                } 
+                }
                 Start-Sleep 10
                 Invoke-Command -VMName $Name -ScriptBlock $WaitAD -Credential $localCredentials -EA SilentlyContinue | Out-Null
             }
@@ -413,6 +425,7 @@ function Build-LabForest {
     }
 
 }
+
 
 <#
 .SYNOPSIS
@@ -446,7 +459,7 @@ function Remove-LabVM {
         }
         $VM | Remove-VM -Force
         Get-ChildItem -Path $VM.Path -Recurse | Remove-Item -Force -Recurse
-        Remove-Item $VM.Path -Force 
+        Remove-Item $VM.Path -Force
     }
     catch {
         Write-Error $_.Exception.Message

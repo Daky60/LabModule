@@ -1,4 +1,7 @@
+#Requires -Version 5
+#Requires -RunAsAdministrator
 $config = ".\secretconf.psd1"
+
 
 $Time = Get-Date
 try {
@@ -17,9 +20,8 @@ try {
     Import-Module $config.Configuration.ModulePath
 }
 catch {
-    throw 
+    throw
 }
-
 
 
 try {
