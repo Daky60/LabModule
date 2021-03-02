@@ -14,7 +14,7 @@
 @{
     Configuration = @(
         @{
-        ModulePath = ".\LabModule.psm1"
+        ModulePath = ".\LabModule"
         }
     )
 
