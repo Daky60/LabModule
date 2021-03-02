@@ -33,6 +33,10 @@
             TemplateVHD    = "C:\Users\Sebastian\Documents\GitHub\Exjobb\template.vhd"
             Switch         = "Lab-Switch"
 
+            #User settings
+            Username       = "Administrator"
+            Password       = "Pa55w0rd"
+
             #Network settings
             IP             = "10.0.0.1"
             Prefix         = "24"
@@ -44,10 +48,6 @@
             Generation     = 1
             ProcessorCount = 2
             Path           = ".\Labs\"
-
-            #User settings
-            Username       = "Administrator"
-            Password       = "Pa55w0rd"
         }
         #New Forest
          @{
@@ -67,6 +67,10 @@
             Name = "Lab-SRV1"
             TemplateVHD = "C:\Users\Sebastian\Documents\GitHub\Exjobb\template.vhd"
 
+            #User settings
+            Username = "Administrator"
+            Password = "Pa55w0rd"
+
             #Network settings
             Switch = "Lab-Switch"
             IP = "10.0.0.2"
@@ -79,10 +83,6 @@
             Generation = 1
             ProcessorCount = 2
             Path = ".\Labs\"
-
-            #User settings
-            Username = "Administrator"
-            Password = "Pa55w0rd"
 
             #This VM will be joined to domain $DomainName
             DomainJoined = $true
@@ -103,6 +103,10 @@
             ActionType="VM"
             Name = "Lab-Slim"
 
+            #User settings
+            Username = "Administrator"
+            Password = "Pa55w0rd"
+
             #Network settings
             Switch = "Lab-Switch"
             IP = "10.0.0.3"
@@ -110,9 +114,6 @@
             DefaultGateway = "10.0.0.1"
             DNS = "10.0.0.1"
 
-            #User settings
-            Username = "Administrator"
-            Password = "Pa55w0rd"
         }#>
     )
 }
