@@ -231,12 +231,15 @@ function Build-LabVM {
             if (Get-VM | Where-Object { $_.Name -eq $Name }) {
                 throw "Virtual Machine $Name already exists."
             }
+
             if ( !(Test-Path $Path) ) {
                 New-Item -ItemType Directory -Path $Path -EA stop | Out-Null
             }
+
             if (Test-Path $Path) {
                 New-Item -ItemType Directory -Path "$Path/$Name" -EA stop | Out-Null
             }
+
             if ( ($TemplateVHD) -and (Test-Path $TemplateVHD -EA SilentlyContinue) ) {
                 if ( !(Test-Path $VHDDestination -EA stop) ) {
                     Copy-Item $TemplateVHD $VHDDestination -EA stop
@@ -248,6 +251,7 @@ function Build-LabVM {
             else {
                 throw "Missing TemplateVHD path $TemplateVHD"
             }
+
         }
         catch {
             throw $_.Exception.Message
@@ -275,6 +279,7 @@ function Build-LabVM {
             if ( ($NewVM.ProcessorCount -ne $ProcessorCount) ) {
                 $NewVM | Set-VM -ProcessorCount $ProcessorCount -EA stop
             }
+
         }
         catch {
             throw $_.Exception.Message
@@ -284,8 +289,8 @@ function Build-LabVM {
         try {
             ## Start the VM
             Start-VM $Name
-            ## Wait for VM to start up
             Wait-VM $Name
+
             # Rename VM
             $RenameVM =
             {
@@ -294,7 +299,6 @@ function Build-LabVM {
             Invoke-Command -VMName $Name -ScriptBlock $RenameVM -Credential $Credentials | Out-Null
 
             Restart-VM $Name -Force -Wait
-            # Wait
             Wait-VM $Name
 
             ## Final configurations
@@ -395,7 +399,8 @@ function Build-LabForest {
                     WarningAction = SilentlyContinue
                 }
 
-            Install-ADDSForest @InstallFores}
+            Install-ADDSForest @InstallForest
+            }
             Invoke-Command -VMName $Name -ScriptBlock $InstallForest -Credential $Credentials | Out-Null
 
             # Wait till DC is booted

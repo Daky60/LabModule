@@ -1,5 +1,3 @@
-#Requires -Version 5
-#Requires -RunAsAdministrator
 $config = ".\secretconf.psd1"
 
 

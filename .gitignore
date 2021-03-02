@@ -4,3 +4,5 @@ Labs/*
 *.vhdx
 *.avhd
 *.psd1
+
+!LabModule.psd1
