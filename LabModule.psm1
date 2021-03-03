@@ -1,3 +1,7 @@
+#Requires -RunAsAdministrator
+#Requires -Version 5.1
+
+
 <#
 .SYNOPSIS
 Creates virtual switch in Hyper-V
