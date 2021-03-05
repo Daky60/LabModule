@@ -429,25 +429,23 @@ function Build-LabForest {
                 #Enable-PSRemoting -Force
                 Install-WindowsFeature AD-Domain-Services -IncludeManagementTools
                 Import-Module ADDSDeployment
-
-                ForestParameters = @{
-                    CreateDnsDelegation = $false
-                    DomainMode = $Using:DomainMode
-                    DomainName = $Using:DomainName
-                    InstallDns = $true
-                    SafeModeAdministratorPassword = $Using:Credentials.Password
-                    Force = $true
-                    WarningAction = SilentlyContinue
-                }
-
-            Install-ADDSForest @InstallForest
+                Install-ADDSForest `
+                -CreateDnsDelegation:$false `
+                -DomainMode $Using:DomainMode `
+                -DomainName $Using:DomainName `
+                -ForestMode $Using:ForestMode `
+                -InstallDns:$true `
+                -SafeModeAdministratorPassword $Using:Credentials.Password `
+                -Force `
+                -WarningAction "SilentlyContinue"
             }
             Invoke-Command -VMName $Name -ScriptBlock $InstallForest -Credential $Credentials | Out-Null
 
             # Wait till DC is booted
             do { Start-Sleep 5 } while ( (Get-VM $Name).state -ne "Running" )
-
+            Wait-VM $Name
             # Wait for AD to be reachable before proceeding
+            # Stop script if 20 min elapsed
             $StartTime = Get-Date
             $WaitAD = {
                 do {
@@ -458,7 +456,7 @@ function Build-LabForest {
             do {
                 $TimeElapsed = $(Get-Date) - $StartTime
                 if ($TimeElapsed.TotalMinutes -gt 20) {
-                    throw "Took too long to restart DC"
+                    throw "Took too long to restart $Name"
                 }
                 Start-Sleep 10
                 Invoke-Command -VMName $Name -ScriptBlock $WaitAD -Credential $localCredentials -EA SilentlyContinue | Out-Null
