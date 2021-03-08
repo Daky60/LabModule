@@ -1,4 +1,4 @@
-#Requires -RunAsAdministrator
+﻿#Requires -RunAsAdministrator
 #Requires -Version 5.1
 
 
@@ -22,20 +22,20 @@ Default: None
 
 
 .EXAMPLE
-Build-LabSwitch -Name "Lab-switch" -Type "external" -NetAdapter "ethernet"
+New-LabSwitch -Name "Lab-switch" -Type "external" -NetAdapter "ethernet"
 
-Build-LabSwitch "Lab-switch"
+New-LabSwitch "Lab-switch"
 
 .NOTES
 https://docs.microsoft.com/en-us/powershell/module/hyper-v/new-vmswitch?view=win10-ps
 
 #>
-function Build-LabSwitch {
+function New-LabSwitch {
     [CmdletBinding()]
     Param(
         [Parameter(Mandatory)]
         [String]$Name,
-        [ValidateSet("internal", "external", "private", ErrorMessage = "Try {1} instead")]
+        [ValidateSet("internal", "external", "private")]
         [String]$Type = "internal",
         [Parameter(Mandatory = $false)]
         [String]$NetAdapter
@@ -206,21 +206,21 @@ Requires DomainJoined
 
 .EXAMPLE
 
-Build-LabVM "My-VM"
+New-LabVM "My-VM"
 
-Build-LabVM -TemplateVHD "C:\template.vhd"
+New-LabVM -TemplateVHD "C:\template.vhd"
 
-Build-LabVM -TemplateVHD "C:\template.vhd" -Switch "My-Switch" -IP "192.168.0.2" -Prefix "24" -DefaultGateway "192.168.0.1" -DNS "127.0.0.1"
+New-LabVM -TemplateVHD "C:\template.vhd" -Switch "My-Switch" -IP "192.168.0.2" -Prefix "24" -DefaultGateway "192.168.0.1" -DNS "127.0.0.1"
 
-Build-LabVM -TemplateVHD "C:\template.vhd" -Switch "My-Switch" -IP "192.168.0.2" -Prefix "24" -DefaultGateway "192.168.0.1" -DNS "127.0.0.1" -Username "Administrator" -Password ("Pa55w0rd" | ConvertTo-SecureString -AsPlainText -Force)
+New-LabVM -TemplateVHD "C:\template.vhd" -Switch "My-Switch" -IP "192.168.0.2" -Prefix "24" -DefaultGateway "192.168.0.1" -DNS "127.0.0.1" -Username "Administrator" -Password ("Pa55w0rd" | ConvertTo-SecureString -AsPlainText -Force)
 
-Build-LabVM -Name "My-VM" -TemplateVHD "C:\template.vhd" -Memory 2GB -Generation 1 -ProcessorCount 2 -Switch "My-Switch" -IP "192.168.0.2" -Prefix "24" -DefaultGateway "192.168.0.1" -DNS "127.0.0.1" -Username "Administrator" -Password ("Pa55w0rd" | ConvertTo-SecureString -AsPlainText -Force) -DomainJoined $true -DomainName "contoso.local"
+New-LabVM -Name "My-VM" -TemplateVHD "C:\template.vhd" -Memory 2GB -Generation 1 -ProcessorCount 2 -Switch "My-Switch" -IP "192.168.0.2" -Prefix "24" -DefaultGateway "192.168.0.1" -DNS "127.0.0.1" -Username "Administrator" -Password ("Pa55w0rd" | ConvertTo-SecureString -AsPlainText -Force) -DomainJoined $true -DomainName "contoso.local"
 
 .NOTES
 https://docs.microsoft.com/en-us/powershell/module/hyper-v/new-vm?view=win10-ps
 
 #>
-function Build-LabVM {
+function New-LabVM {
     [CmdletBinding()]
     Param(
         [Parameter(Mandatory)]
@@ -403,14 +403,14 @@ Default: "WinThreshold" (WIN2016)
 
 
 .EXAMPLE
-Build-Forest -Name "My-VM" -DomainName "contoso.local" -Username "Administrator" -Password ("Pa55w0rd" | ConvertTo-SecureString -AsPlainText -Force)
+Install-LabForest -Name "My-VM" -DomainName "contoso.local" -Username "Administrator" -Password ("Pa55w0rd" | ConvertTo-SecureString -AsPlainText -Force)
 
 .NOTES
 https://docs.microsoft.com/en-us/powershell/module/addsdeployment/install-addsforest?view=win10-ps
 The password of the Admin account will also be used for the DSRM password
 
 #>
-function Build-LabForest {
+function Install-LabForest {
     [CmdletBinding()]
     Param(
         [Parameter(Mandatory = $true)]
@@ -527,7 +527,7 @@ This function removes all VMs inside a folder
 Name of the folder which holds all VMs
 
 .EXAMPLE
-Remove-LabVM -Folder "Lab"
+Remove-LabVM -Folder "MyLab"
 
 .NOTES
 Deletes the VHDs if in the same folder as the VM
