@@ -32,7 +32,7 @@ try {
             switch ($i.ActionType) {
                 "Switch" {
                     $i.Remove("ActionType")
-                    Build-LabSwitch @i
+                    New-LabSwitch @i
                     if ($?) {
                         $TimeElapsed = $(Get-Date) - $StartTime
                         Write-Host("Switch $($i.Name) created in $([math]::Round($TimeElapsed.TotalMinutes)) minutes")
@@ -40,7 +40,7 @@ try {
                 }
                 "VM" {
                     $i.Remove("ActionType")
-                    Build-LabVM @i
+                    New-LabVM @i
                     if ($?) {
                         $TimeElapsed = $(Get-Date) - $StartTime
                         Write-Host("VM $($i.Name) created in $([math]::Round($TimeElapsed.TotalMinutes)) minutes")
@@ -48,7 +48,7 @@ try {
                 }
                 "Forest" {
                     $i.Remove("ActionType")
-                    Build-LabForest @i
+                    Install-LabForest @i
                     if ($?) {
                         $TimeElapsed = $(Get-Date) - $StartTime
                         Write-Host("Forest $($i.DomainName) created in $([math]::Round($TimeElapsed.TotalMinutes)) minutes")
