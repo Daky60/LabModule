@@ -123,6 +123,7 @@ Post-installation configuration such as network settings and joining the machine
 
 .PARAMETER Name
 Name of the VM
+Also is ComputerName if credentials are entered
 Required: True
 
 .PARAMETER TemplateVHD
@@ -255,7 +256,9 @@ function Build-LabVM {
         [String]$DomainName
     )
     BEGIN {
-        $Credentials = New-Object System.Management.Automation.PSCredential ($Username, $Password)
+        if ($Username -and $Password ) {
+            $Credentials = New-Object System.Management.Automation.PSCredential ($Username, $Password)
+        }
         ## Fix so it stops if one fails
         try {
             #Uses appropiate file ending
@@ -324,36 +327,38 @@ function Build-LabVM {
             ## Start the VM
             Start-VM $Name
             Wait-VM $Name
-
-            # Rename VM
-            $RenameVM =
-            {
-                Rename-Computer -ComputerName $env:computername -NewName $Using:Name -Force -WarningAction SilentlyContinue
-            }
-            Invoke-Command -VMName $Name -ScriptBlock $RenameVM -Credential $Credentials | Out-Null
-
-            Restart-VM $Name -Force -Wait
-            Wait-VM $Name
-
-            ## Final configurations
-            $SetupVM =
-            {
-                ## Network configuration
-                if ( ($Using:IP) -and ($Using:Prefix) -and ($Using:DefaultGateway) -and ($Using:DNS) ) {
-                    $IFIndex = (Get-NetAdapter).ifIndex
-                    New-NetIPAddress -InterfaceIndex $IFIndex -IPAddress $Using:IP -PrefixLength $Using:Prefix -DefaultGateway $Using:DefaultGateway -EA Stop
-                    Set-DNSClientServerAddress –interfaceIndex $IFIndex –ServerAddresses $Using:DNS -EA stop
+            ## Require creds for post installation configuration
+            if ($Username -and $Password) {
+                # Rename VM
+                $RenameVM =
+                {
+                    Rename-Computer -ComputerName $env:computername -NewName $Using:Name -Force -WarningAction SilentlyContinue
                 }
-                ## Wait until domain is reachable
-                if ( $Using:DomainJoined ) {
-                    do {
-                        Start-Sleep(10)
-                        Test-Connection $Using:DomainName -Count 1
-                    } until ($?)
-                    Add-Computer -DomainName $Using:DomainName -ComputerName $env:computername -Credential $Using:Credentials -Restart –Force -EA stop
+                Invoke-Command -VMName $Name -ScriptBlock $RenameVM -Credential $Credentials | Out-Null
+
+                Restart-VM $Name -Force -Wait
+                Wait-VM $Name
+
+                ## Final configurations
+                $SetupVM =
+                {
+                    ## Network configuration
+                    if ( ($Using:IP) -and ($Using:Prefix) -and ($Using:DefaultGateway) -and ($Using:DNS) ) {
+                        $IFIndex = (Get-NetAdapter).ifIndex
+                        New-NetIPAddress -InterfaceIndex $IFIndex -IPAddress $Using:IP -PrefixLength $Using:Prefix -DefaultGateway $Using:DefaultGateway -EA Stop
+                        Set-DNSClientServerAddress –interfaceIndex $IFIndex –ServerAddresses $Using:DNS -EA stop
+                    }
+                    ## Wait until domain is reachable
+                    if ( $Using:DomainJoined ) {
+                        do {
+                            Start-Sleep(10)
+                            Test-Connection $Using:DomainName -Count 1
+                        } until ($?)
+                        Add-Computer -DomainName $Using:DomainName -ComputerName $env:computername -Credential $Using:Credentials -Restart –Force -EA stop
+                    }
                 }
+                Invoke-Command -VMName $Name -ScriptBlock $SetupVM -Credential $Credentials | Out-Null
             }
-            Invoke-Command -VMName $Name -ScriptBlock $SetupVM -Credential $Credentials | Out-Null
         }
         catch {
             throw $_.Exception
