@@ -1,4 +1,6 @@
+## Path to the configuration file
 $config = ".\secretconf.psd1"
+
 
 
 $Time = Get-Date
