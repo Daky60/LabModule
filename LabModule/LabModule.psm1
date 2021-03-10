@@ -24,6 +24,7 @@ Default: None
 .EXAMPLE
 New-LabSwitch -Name "Lab-switch" -Type "external" -NetAdapter "ethernet"
 
+.EXAMPLE
 New-LabSwitch "Lab-switch"
 
 .NOTES
@@ -205,15 +206,21 @@ Requires DomainJoined
 
 
 .EXAMPLE
+New-LabVM -Name "My-VM"
 
-New-LabVM "My-VM"
+.EXAMPLE
+New-LabVM -Name "My-VM" -Memory 2GB -Generation 2
 
-New-LabVM -TemplateVHD "C:\template.vhd"
+.EXAMPLE
+New-LabVM -Name "My-VM" -Switch "External" -ProcessorCount 2
 
-New-LabVM -TemplateVHD "C:\template.vhd" -Switch "My-Switch" -IP "192.168.0.2" -Prefix "24" -DefaultGateway "192.168.0.1" -DNS "127.0.0.1"
+.EXAMPLE
+New-LabVM -Name "My-VM" -TemplateVHD "C:\template.vhd"
 
-New-LabVM -TemplateVHD "C:\template.vhd" -Switch "My-Switch" -IP "192.168.0.2" -Prefix "24" -DefaultGateway "192.168.0.1" -DNS "127.0.0.1" -Username "Administrator" -Password ("Pa55w0rd" | ConvertTo-SecureString -AsPlainText -Force)
+.EXAMPLE
+New-LabVM -Name "My-VM" -TemplateVHD "C:\template.vhd" -Switch "My-Switch" -IP "192.168.0.2" -Prefix "24" -DefaultGateway "192.168.0.1" -DNS "127.0.0.1" -Username "Administrator" -Password ("Pa55w0rd" | ConvertTo-SecureString -AsPlainText -Force)
 
+.EXAMPLE
 New-LabVM -Name "My-VM" -TemplateVHD "C:\template.vhd" -Memory 2GB -Generation 1 -ProcessorCount 2 -Switch "My-Switch" -IP "192.168.0.2" -Prefix "24" -DefaultGateway "192.168.0.1" -DNS "127.0.0.1" -Username "Administrator" -Password ("Pa55w0rd" | ConvertTo-SecureString -AsPlainText -Force) -DomainJoined $true -DomainName "contoso.local"
 
 .NOTES
@@ -262,8 +269,10 @@ function New-LabVM {
         ## Fix so it stops if one fails
         try {
             #Uses appropiate file ending
-            $ValidateTemplateVHD = Get-VHD -Path $TemplateVHD -EA stop
-            $VHDDestination = "$Path\$Name\$Name.$($ValidateTemplateVHD.Vhdformat)"
+            if ($TemplateVHD) {
+                $ValidateTemplateVHD = Get-VHD -Path $TemplateVHD -EA stop
+                $VHDDestination = "$Path\$Name\$Name.$($ValidateTemplateVHD.Vhdformat)"
+            }
 
             if (Get-VM | Where-Object { $_.Name -eq $Name }) {
                 throw "Virtual Machine $Name already exists."
@@ -285,10 +294,6 @@ function New-LabVM {
                     throw "VHD already exists in destination path"
                 }
             }
-            else {
-                throw "Missing TemplateVHD path $TemplateVHD"
-            }
-
         }
         catch {
             throw $_.Exception.Message
@@ -301,9 +306,12 @@ function New-LabVM {
             $VMParameters = @{
                 Name               = $Name
                 MemoryStartupBytes = $Memory
-                VHDPath            = $VHDDestination
                 Path               = $Path
                 Generation         = $Generation
+            }
+
+            if ( $PSBoundParameters.ContainsKey('TemplateVHD') ) {
+                $VMParameters.Add('VHDPath', $VHDDestination)
             }
 
             if ( $PSBoundParameters.ContainsKey('Switch') ) {
@@ -322,46 +330,48 @@ function New-LabVM {
             throw $_.Exception.Message
             break
         }
-        ## Post VM initial installation
-        try {
-            ## Start the VM
-            Start-VM $Name
-            Wait-VM $Name
-            ## Require creds for post installation configuration
-            if ($Username -and $Password) {
-                # Rename VM
-                $RenameVM =
-                {
-                    Rename-Computer -ComputerName $env:computername -NewName $Using:Name -Force -WarningAction SilentlyContinue
-                }
-                Invoke-Command -VMName $Name -ScriptBlock $RenameVM -Credential $Credentials | Out-Null
-
-                Restart-VM $Name -Force -Wait
+        if ($TemplateVHD) {
+            ## Post VM initial installation
+            try {
+                ## Start the VM
+                Start-VM $Name
                 Wait-VM $Name
+                ## Require creds for post installation configuration
+                if ($Username -and $Password) {
+                    # Rename VM
+                    $RenameVM =
+                    {
+                        Rename-Computer -ComputerName $env:computername -NewName $Using:Name -Force -WarningAction SilentlyContinue
+                    }
+                    Invoke-Command -VMName $Name -ScriptBlock $RenameVM -Credential $Credentials | Out-Null
 
-                ## Final configurations
-                $SetupVM =
-                {
-                    ## Network configuration
-                    if ( ($Using:IP) -and ($Using:Prefix) -and ($Using:DefaultGateway) -and ($Using:DNS) ) {
-                        $IFIndex = (Get-NetAdapter).ifIndex
-                        New-NetIPAddress -InterfaceIndex $IFIndex -IPAddress $Using:IP -PrefixLength $Using:Prefix -DefaultGateway $Using:DefaultGateway -EA Stop
-                        Set-DNSClientServerAddress –interfaceIndex $IFIndex –ServerAddresses $Using:DNS -EA stop
+                    Restart-VM $Name -Force -Wait
+                    Wait-VM $Name
+
+                    ## Final configurations
+                    $SetupVM =
+                    {
+                        ## Network configuration
+                        if ( ($Using:IP) -and ($Using:Prefix) -and ($Using:DefaultGateway) -and ($Using:DNS) ) {
+                            $IFIndex = (Get-NetAdapter).ifIndex
+                            New-NetIPAddress -InterfaceIndex $IFIndex -IPAddress $Using:IP -PrefixLength $Using:Prefix -DefaultGateway $Using:DefaultGateway -EA Stop
+                            Set-DNSClientServerAddress –interfaceIndex $IFIndex –ServerAddresses $Using:DNS -EA stop
+                        }
+                        ## Wait until domain is reachable
+                        if ( $Using:DomainJoined ) {
+                            do {
+                                Start-Sleep(10)
+                                Test-Connection $Using:DomainName -Count 1
+                            } until ($?)
+                            Add-Computer -DomainName $Using:DomainName -ComputerName $env:computername -Credential $Using:Credentials -Restart –Force -EA stop
+                        }
                     }
-                    ## Wait until domain is reachable
-                    if ( $Using:DomainJoined ) {
-                        do {
-                            Start-Sleep(10)
-                            Test-Connection $Using:DomainName -Count 1
-                        } until ($?)
-                        Add-Computer -DomainName $Using:DomainName -ComputerName $env:computername -Credential $Using:Credentials -Restart –Force -EA stop
-                    }
+                    Invoke-Command -VMName $Name -ScriptBlock $SetupVM -Credential $Credentials | Out-Null
                 }
-                Invoke-Command -VMName $Name -ScriptBlock $SetupVM -Credential $Credentials | Out-Null
             }
-        }
-        catch {
-            throw $_.Exception
+            catch {
+                throw $_.Exception
+            }
         }
     }
 }
