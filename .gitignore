@@ -1,8 +1,11 @@
-tmp/*
+#To be ignored
 Labs/*
 *.vhd
 *.vhdx
 *.avhd
 *.psd1
 
+#To be excepted
 !LabModule.psd1
+!config.psd1
+!Templates/*
