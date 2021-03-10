@@ -551,11 +551,10 @@ function Remove-LabEnv {
     )
     try {
         if (Test-Path $Folder) {
-            $Folder = Get-ChildItem $Folder
+            $Folder = Get-ChildItem $Folder | Select-Object -ExpandProperty Name
             foreach ($VM in $Folder) {
                 Remove-LabVM $VM
             }
-            Remove-Item $Folder -Force
         }
     }
     catch {
