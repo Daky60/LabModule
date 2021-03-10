@@ -14,7 +14,7 @@
 @{
     Configuration = @(
         @{
-        ModulePath = ".\LabModule"
+        ModulePath = ".\LabModule\LabModule"
         }
     )
 
@@ -30,7 +30,7 @@
         @{
             ActionType     = "VM"
             Name           = "Lab-DC"
-            TemplateVHD    = "C:\Users\Sebastian\Documents\GitHub\Exjobb\template.vhd"
+            TemplateVHD    = ".\template.vhd"
             Switch         = "Lab-Switch"
 
             #User settings
@@ -65,7 +65,7 @@
         @{
             ActionType = "VM"
             Name = "Lab-SRV1"
-            TemplateVHD = "C:\Users\Sebastian\Documents\GitHub\Exjobb\template.vhd"
+            TemplateVHD = ".\template.vhd"
 
             #User settings
             Username = "Administrator"
@@ -87,33 +87,6 @@
             #This VM will be joined to domain $DomainName
             DomainJoined = $true
             DomainName = "contoso.lab"
-        }#>
-        <#
-        #Examples of VM configurations
-        @{
-            ActionType="VM"
-            Name = "Lab-Empty"
         }
-        @{
-            ActionType="VM"
-            Name = "Lab-Minimal"
-            TemplateVHD = "C:\Users\Sebastian\Documents\GitHub\Exjobb\template.vhd"
-        }
-        @{
-            ActionType="VM"
-            Name = "Lab-Slim"
-
-            #User settings
-            Username = "Administrator"
-            Password = "Pa55w0rd"
-
-            #Network settings
-            Switch = "Lab-Switch"
-            IP = "10.0.0.3"
-            Prefix = "24"
-            DefaultGateway = "10.0.0.1"
-            DNS = "10.0.0.1"
-
-        }#>
     )
 }
