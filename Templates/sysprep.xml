@@ -21,7 +21,7 @@
             </OOBE>
             <UserAccounts>
                 <AdministratorPassword>
-                    <Value>Linux4Ever</Value>
+                    <Value>Pa55w0rd</Value>
                     <PlainText>true</PlainText>
                 </AdministratorPassword>
             </UserAccounts>
